@@ -27,7 +27,7 @@ type tagListResponse struct {
 	Tags []string `json:"tags"`
 }
 
-type manifestResponse struct {
+type Manifest struct {
 	SchemaVersion int    `json:"schemaVersion"`
 	Name          string `json:"name"`
 	Tag           string `json:"tag"`
@@ -41,20 +41,9 @@ type manifestResponse struct {
 	// NOTE: signatures is ignored at the moment
 }
 
-type Credentials struct {
-	username string
-	password string
-}
-
 type Registry struct {
 	host        string
 	credentials Credentials
-}
-
-type Manifest struct {
-	Name   string
-	Tag    string
-	Layers []string
 }
 
 var ErrImageDoesNotExist = errors.New("image does not exist")
@@ -256,18 +245,10 @@ func (r *Registry) GetManifest(imageName string, tag string) (*Manifest, error) 
 		return nil, err
 	}
 
-	var mResp manifestResponse
-	if err = json.Unmarshal(content, &mResp); err != nil {
+	var manifest Manifest
+	if err = json.Unmarshal(content, &manifest); err != nil {
 		return nil, err
 	}
 
-	layers := make([]string, len(mResp.FsLayers))
-	for _, item := range mResp.FsLayers {
-		layers = append(layers, item.BlobSum)
-	}
-	return &Manifest{
-		Name:   mResp.Name,
-		Tag:    mResp.Tag,
-		Layers: layers,
-	}, nil
+	return &manifest, nil
 }

@@ -11,6 +11,11 @@ import (
 	"strings"
 )
 
+type Credentials struct {
+	username string
+	password string
+}
+
 type dockerConfig struct {
 	Auth map[string]struct {
 		Username string `json:"username"`
