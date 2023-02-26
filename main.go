@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
+	"time"
 )
 
 func main() {
@@ -21,7 +21,11 @@ func main() {
 		log.Fatalf("No creds for registry %s", host)
 	}
 
-	r := Registry{host: host, credentials: credentials}
+	r, err := NewRegisty(host, credentials)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	//resp, err := r.request("v2/_catalog")
 	tags, err := r.GetTags("library/alpine")
 	if err != nil {
@@ -30,9 +34,10 @@ func main() {
 	}
 	fmt.Println(tags)
 
-	fmt.Println(strings.Repeat("-", 40))
+	before := time.Now()
+	for _, tag := range tags {
+		r.GetManifest("library/alpine", tag)
+	}
 
-	manifest, err := r.GetManifest("library/alpine", "latest")
-	fmt.Println(manifest, err)
-
+	fmt.Println(time.Since(before))
 }

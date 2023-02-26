@@ -6,17 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
-	"time"
 )
-
-type tokenResponse struct {
-	Token    string    `json:"token"`
-	Scope    string    `json:"scope"`
-	Validity int       `json:"expires_in"`
-	Issued   time.Time `json:"issued_at"`
-}
 
 type catalogResponse struct {
 	Repositories []string `json:"repositories"`
@@ -42,133 +33,63 @@ type Manifest struct {
 }
 
 type Registry struct {
-	host        string
-	credentials Credentials
+	host string
+	auth Authorizer
 }
 
 var ErrImageDoesNotExist = errors.New("image does not exist")
 var ErrResourceDoesNotExist = errors.New("resource does not exist")
 var ErrNotAllowedOrUnavailable = errors.New("your're either not allowed to access this resource or it does not exist")
 
-func extractOAuthSettings(s string) (string, string, string) {
-	// Bearer realm="...",service="...",scope=""
-
-	var realm, service, scope string
-
-	_, rest, _ := strings.Cut(s, " ")
-
-	for _, item := range strings.Split(rest, ",") {
-		// item == x=".."
-		key, value, _ := strings.Cut(item, "=")
-		value = value[1 : len(value)-1]
-
-		switch key {
-		case "realm":
-			realm = value
-		case "service":
-			service = value
-		case "scope":
-			if scope == "" {
-				scope = value
-			} else {
-				scope += "," + value
-			}
-
-		}
-	}
-
-	return realm, service, scope
-}
-
-func optainToken(authenticate string, creds *Credentials) (*tokenResponse, error) {
-	// https://stackoverflow.com/questions/56193110/how-can-i-use-docker-registry-http-api-v2-to-obtain-a-list-of-all-repositories-i/68654659#68654659
-	// https://docs.docker.com/registry/spec/auth/token/
-
-	realm, service, scope := extractOAuthSettings(authenticate)
-
-	authUrl, err := url.Parse(realm)
-	if err != nil {
-		return nil, err
-	}
-
-	values := make(url.Values)
-	values.Add("service", service)
-	values.Add("grant_type", "password")
-	values.Add("client_id", "dockerengine")
-	values.Add("scope", scope)
-	values.Add("username", creds.username)
-	values.Add("password", creds.password)
-
-	authUrl.RawQuery = values.Encode()
-
-	// to access private docker-hub repos this is required
-	authUrl.User = url.UserPassword(creds.username, creds.password)
-
-	resp, err := http.Get(authUrl.String())
-
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return nil, errors.New("could not authenticate with password")
-	}
-
-	content, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var tResp tokenResponse
-	err = json.Unmarshal(content, &tResp)
-	if err != nil {
-		return nil, errors.New("could not deserialize token response")
-	}
-
-	return &tResp, nil
-}
-
-func (r *Registry) request(endpoint string) (*http.Response, error) {
-	host := strings.TrimSuffix(r.host, "/")
+func buildUrl(host, endpoint string) string {
+	host = strings.TrimSuffix(host, "/")
 	endpoint = strings.TrimPrefix(endpoint, "/")
-	targetUrl := fmt.Sprintf("https://%s/%s", host, endpoint)
-	// Head instead of Get because we have to optain a token anyways
-	// on https registries a login is required. Meaning we expect a 401
-	// type of response
-	resp, err := http.Head(targetUrl)
+	return fmt.Sprintf("https://%s/%s", host, endpoint)
+}
+
+func NewRegisty(host string, creds Credentials) (*Registry, error) {
+	resp, err := http.Head(buildUrl(host, "v2"))
 	if err != nil {
 		return nil, err
 	}
 
-	resp.Body.Close()
+	wwwAuth := resp.Header.Get("Www-authenticate")
 
-	if resp.StatusCode != 401 || resp.Header.Get("Www-authenticate") == "" {
-		return nil, fmt.Errorf("expected authentication request but got response status: %s", resp.Status)
+	if resp.StatusCode != 401 || wwwAuth == "" {
+		return nil, fmt.Errorf("expected auth challenge from registry, but got: %s", resp.Status)
 	}
 
-	token, err := optainToken(resp.Header.Get("Www-authenticate"), &r.credentials)
-	if err != nil {
-		return nil, err
-	}
+	return &Registry{
+		host: host,
+		auth: oauthAuthorizerFromChallenge(wwwAuth, creds),
+	}, nil
+}
 
-	request, err := http.NewRequest("GET", targetUrl, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token.Token))
+// makes the request and performs some common error checking
+// and retry logic
+func (r *Registry) request(request *http.Request) (*http.Response, error) {
 	request.Header.Set("Accept-Encoding", "*")
 
-	resp, err = http.DefaultClient.Do(request)
+	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return nil, err
 	}
 
 	if resp.StatusCode == 401 {
 		resp.Body.Close()
-		// NOTE: in the Www-authenticate should be an error field that says so
-		return nil, ErrNotAllowedOrUnavailable
+
+		// retry one more time with fresh token
+		r.auth.authorizeRequest(request)
+		resp, err = http.DefaultClient.Do(request)
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode == 401 {
+			resp.Body.Close()
+			// NOTE: in the Www-authenticate should be an error field that says so
+			return nil, ErrNotAllowedOrUnavailable
+		}
 	}
 	if resp.StatusCode == 404 {
 		resp.Body.Close()
@@ -183,7 +104,17 @@ func (r *Registry) request(endpoint string) (*http.Response, error) {
 }
 
 func (r *Registry) GetCatalog() ([]string, error) {
-	resp, err := r.request("v2/_catalog")
+	catalogUrl := buildUrl(r.host, "v2/_catalog")
+	request, err := http.NewRequest("GET", catalogUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = r.auth.authorizeRequest(request); err != nil {
+		return nil, err
+	}
+
+	resp, err := r.request(request)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +137,18 @@ func (r *Registry) GetCatalog() ([]string, error) {
 func (r *Registry) GetTags(imageName string) ([]string, error) {
 	imageName = strings.TrimSuffix(imageName, "/")
 	imageName = strings.TrimPrefix(imageName, "/")
-	resp, err := r.request(fmt.Sprintf("v2/%s/tags/list", imageName))
+
+	tagListUrl := buildUrl(r.host, fmt.Sprintf("v2/%s/tags/list", imageName))
+	request, err := http.NewRequest("GET", tagListUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = r.auth.authorizeRepoPull(request, imageName); err != nil {
+		return nil, err
+	}
+
+	resp, err := r.request(request)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +175,18 @@ func (r *Registry) GetTags(imageName string) ([]string, error) {
 func (r *Registry) GetManifest(imageName string, tag string) (*Manifest, error) {
 	imageName = strings.TrimSuffix(imageName, "/")
 	imageName = strings.TrimPrefix(imageName, "/")
-	resp, err := r.request(fmt.Sprintf("v2/%s/manifests/%s", imageName, tag))
+
+	manifestUrl := buildUrl(r.host, fmt.Sprintf("v2/%s/manifests/%s", imageName, tag))
+	request, err := http.NewRequest("GET", manifestUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = r.auth.authorizeRepoPull(request, imageName); err != nil {
+		return nil, err
+	}
+
+	resp, err := r.request(request)
 	if err != nil {
 		return nil, err
 	}
