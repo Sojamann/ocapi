@@ -22,7 +22,7 @@ type Manifest struct {
 	SchemaVersion int    `json:"schemaVersion"`
 	Name          string `json:"name"`
 	Tag           string `json:"tag"`
-	Architechture string `json:"architecture"`
+	Architecture  string `json:"architecture"`
 	FsLayers      []struct {
 		BlobSum string `json:"blobSum"`
 	} `json:"fsLayers"`
