@@ -48,7 +48,7 @@ func buildUrl(host, endpoint string) string {
 }
 
 func NewRegisty(host string, creds Credentials) (*Registry, error) {
-	resp, err := http.Head(buildUrl(host, "v2"))
+	resp, err := http.Head(buildUrl(host, "v2/_catalog"))
 	if err != nil {
 		return nil, err
 	}

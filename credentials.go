@@ -58,12 +58,13 @@ func LoadCredentialsFromDockerConfig(path string) (map[string]Credentials, error
 	hostToCredMapping := make(map[string]Credentials)
 
 	for k, v := range df.Auth {
-		reg, err := url.Parse(k)
-		if err != nil {
-			return nil, errors.New("invalid registry auth entry")
+		host := k
+
+		// some entries look like https://some.host/endpoint
+		if reg, err := url.Parse(k); err == nil && reg.Host != "" {
+			host = reg.Host
 		}
 
-		host := reg.Host
 		if v.Username != "" && v.Password != "" {
 			hostToCredMapping[host] = Credentials{
 				username: v.Username,
@@ -74,9 +75,9 @@ func LoadCredentialsFromDockerConfig(path string) (map[string]Credentials, error
 
 		if v.Auth != "" {
 
-			data, err := base64.RawStdEncoding.DecodeString(v.Auth)
+			data, err := base64.StdEncoding.DecodeString(v.Auth)
 			if err != nil {
-				return nil, fmt.Errorf("Invalid login in %s", k)
+				return nil, fmt.Errorf("Invalid login in auth of %s: %v", k, err)
 			}
 			username, password, _ := strings.Cut(string(data), ":")
 
