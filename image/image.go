@@ -1,7 +1,9 @@
-package main
+package image
 
 import (
 	"strings"
+
+	"github.com/sojamann/opcapi/registry"
 )
 
 type Image struct {
@@ -11,7 +13,7 @@ type Image struct {
 	layers       []string
 }
 
-func ImageFromManifest(mp *Manifest) *Image {
+func ImageFromManifest(mp *registry.Manifest) *Image {
 	layers := make([]string, 0, len(mp.FsLayers))
 
 	for _, layer := range mp.FsLayers {
