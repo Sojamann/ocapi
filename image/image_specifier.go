@@ -13,7 +13,7 @@ type ImageSpecifier struct {
 	Tag       string
 }
 
-var imageSpecifierRe = regexp.MustCompile(`[\w.-_]+\/([\w-_]+\/)*[\w-_]+:[\w-_]+`)
+var imageSpecifierRe = regexp.MustCompile(`^[\w.-_]+\/([\w-_]+\/)*[\w-_]+:[\w-_]+$`)
 
 func ImageSpecifierParse(s string) (*ImageSpecifier, error) {
 	if !imageSpecifierRe.MatchString(s) {
@@ -41,4 +41,8 @@ func (is *ImageSpecifier) ToImage() (*Image, error) {
 	}
 
 	return ImageFromManifest(manifest), nil
+}
+
+func (is ImageSpecifier) String() string {
+	return fmt.Sprintf("%s/%s:%s", is.Registry.Host, is.ImageName, is.Tag)
 }

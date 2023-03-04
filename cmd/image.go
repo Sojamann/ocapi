@@ -63,9 +63,59 @@ var imageShowCmd = &cobra.Command{
 	},
 }
 
+var imageBasedOnCmd = &cobra.Command{
+	Use:   "based-on registry/image:tag registry/images/*:*",
+	Short: "based-on short desc",
+	Long:  "based-on long desc",
+	Args:  cobra.ExactArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		childImgSpecifier, err := image.ImageSpecifierParse(args[0])
+		if err != nil {
+			return err
+		}
+
+		parentImagePattern := image.ImagePattern(args[1])
+		if !parentImagePattern.IsValid() {
+			return fmt.Errorf("image pattern '%s' does not seem to be valid", args[1])
+		}
+
+		parentImgSpecifiers, err := parentImagePattern.Expand()
+		if err != nil {
+			return err
+		}
+
+		img, err := childImgSpecifier.ToImage()
+		if err != nil {
+			return err
+		}
+
+		matched := false
+		for _, parentImgSpecifier := range parentImgSpecifiers {
+			parentImg, err := parentImgSpecifier.ToImage()
+			if err != nil {
+				return err
+			}
+
+			if parentImg.IsParentOf(img) {
+				fmt.Println(parentImgSpecifier)
+				matched = true
+			}
+		}
+
+		if matched {
+			os.Exit(0)
+		} else {
+			os.Exit(1)
+		}
+
+		return nil
+	},
+}
+
 func init() {
 	imageCmd.AddCommand(imageLsCmd)
 	imageCmd.AddCommand(imageShowCmd)
+	imageCmd.AddCommand(imageBasedOnCmd)
 
 	rootCmd.AddCommand(imageCmd)
 }

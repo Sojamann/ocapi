@@ -16,7 +16,7 @@ func (s *ImagePattern) IsValid() bool {
 	registryPattern := `[\w.-_]+`
 	imagePattern := `(\*|(([\w-_]+)+)(\*|\/)?)`
 	tagPattern := `(\*|[\w-_]+)`
-	r := regexp.MustCompile(fmt.Sprintf("%s/%s:%s", registryPattern, imagePattern, tagPattern))
+	r := regexp.MustCompile(fmt.Sprintf("^%s/%s:%s$", registryPattern, imagePattern, tagPattern))
 	return r.MatchString(string(*s))
 }
 

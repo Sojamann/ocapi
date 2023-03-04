@@ -1,6 +1,8 @@
 package image
 
-import "strings"
+import (
+	"strings"
+)
 
 // All images MUST specified as registry.com/namespace/image:tag
 func parseParts(name string) (string, string, string) {
