@@ -14,7 +14,7 @@ var imageCmd = &cobra.Command{
 	Short: "image short desc",
 	Long:  "image long desc",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(FlagConfig)
+		fmt.Println(flagDockerConfig)
 	},
 }
 
@@ -30,21 +30,9 @@ var imageLsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		credentialMap, err := registry.LoadCredentialsFromDockerConfig(FlagConfig)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Docker config is not valid: %v\n", err)
-			os.Exit(1)
-		}
-
 		registryHost := imagePattern.RegistryHost()
 
-		c, found := credentialMap[registryHost]
-		if !found {
-			fmt.Fprintf(os.Stderr, "No credentials were found for: %s\n", registryHost)
-			os.Exit(1)
-		}
-
-		r, err := registry.NewRegisty(registryHost, c)
+		r, err := registry.NewRegisty(registryHost)
 
 		_, imageSpec, tagSpec := image.ParseParts(string(imagePattern))
 		specifiers, err := image.ExpandGlob(r, imageSpec, tagSpec)

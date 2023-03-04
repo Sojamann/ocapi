@@ -4,15 +4,19 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/sojamann/opcapi/registry"
 	"github.com/spf13/cobra"
 )
 
-var FlagConfig string
+var flagDockerConfig string
 
 var rootCmd = &cobra.Command{
 	Use:   "ocapi",
 	Short: "ocapi short desc- ....",
 	Long:  "ocapi long desc- ....",
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		return registry.LoadCredentialsFromDockerConfig(flagDockerConfig)
+	},
 }
 
 func Execute() {
@@ -23,5 +27,5 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&FlagConfig, "config", "c", "~/.docker/config.json", "Path to the config with the credentials")
+	rootCmd.PersistentFlags().StringVarP(&flagDockerConfig, "config", "c", "~/.docker/config.json", "Path to the config with the credentials")
 }

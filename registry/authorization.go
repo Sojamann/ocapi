@@ -39,12 +39,12 @@ type Authorizer interface {
 type oAuthAuthorizer struct {
 	authEndpoint   string
 	service        string
-	credentials    Credentials
+	credentials    credentials
 	repoPullTokens map[string]*token
 	mutex          sync.Mutex
 }
 
-func oauthAuthorizerFromChallenge(authenticate string, creds Credentials) *oAuthAuthorizer {
+func oauthAuthorizerFromChallenge(authenticate string, creds credentials) *oAuthAuthorizer {
 	realm, service, _ := extractOAuthSettings(authenticate)
 	return &oAuthAuthorizer{
 		authEndpoint:   realm,
@@ -113,7 +113,7 @@ func (o *oAuthAuthorizer) authorizeRepoPull(req *http.Request, repo string) erro
 	return nil
 }
 
-func optainToken(realm, service, scope string, creds *Credentials) (*token, error) {
+func optainToken(realm, service, scope string, creds *credentials) (*token, error) {
 	// https://stackoverflow.com/questions/56193110/how-can-i-use-docker-registry-http-api-v2-to-obtain-a-list-of-all-repositories-i/68654659#68654659
 	// https://docs.docker.com/registry/spec/auth/token/
 

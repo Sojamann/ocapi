@@ -11,18 +11,12 @@ import (
 	"strings"
 )
 
-type Credentials struct {
+type credentials struct {
 	username string
 	password string
 }
 
-type dockerConfig struct {
-	Auth map[string]struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-		Auth     string `json:"auth"`
-	} `json:"auths"`
-}
+var credentialLookupTable map[string]credentials = make(map[string]credentials)
 
 func expandUser(path string) string {
 	home, err := os.UserHomeDir()
@@ -37,25 +31,31 @@ func expandUser(path string) string {
 	return path
 }
 
-func LoadCredentialsFromDockerConfig(path string) (map[string]Credentials, error) {
+func LoadCredentialsFromDockerConfig(path string) error {
+	type dockerConfig struct {
+		Auth map[string]struct {
+			Username string `json:"username"`
+			Password string `json:"password"`
+			Auth     string `json:"auth"`
+		} `json:"auths"`
+	}
+
 	path = filepath.Clean(path)
 	path = expandUser(path)
 	path, err := filepath.Abs(path)
 	if err != nil {
-		return nil, fmt.Errorf("got invalid path. Reason: %v", err)
+		return fmt.Errorf("got invalid path. Reason: %v", err)
 	}
 
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("could not load docker config. Reason: %v", err)
+		return fmt.Errorf("could not load docker config. Reason: %v", err)
 	}
 
 	var df dockerConfig
 	if err := json.Unmarshal(content, &df); err != nil {
-		return nil, errors.New("docker config seems to have a unknown format")
+		return errors.New("docker config seems to have a unknown format")
 	}
-
-	hostToCredMapping := make(map[string]Credentials)
 
 	for k, v := range df.Auth {
 		host := k
@@ -66,7 +66,7 @@ func LoadCredentialsFromDockerConfig(path string) (map[string]Credentials, error
 		}
 
 		if v.Username != "" && v.Password != "" {
-			hostToCredMapping[host] = Credentials{
+			credentialLookupTable[host] = credentials{
 				username: v.Username,
 				password: v.Password,
 			}
@@ -77,11 +77,11 @@ func LoadCredentialsFromDockerConfig(path string) (map[string]Credentials, error
 
 			data, err := base64.StdEncoding.DecodeString(v.Auth)
 			if err != nil {
-				return nil, fmt.Errorf("Invalid login in auth of %s: %v", k, err)
+				return fmt.Errorf("Invalid login in auth of %s: %v", k, err)
 			}
 			username, password, _ := strings.Cut(string(data), ":")
 
-			hostToCredMapping[host] = Credentials{
+			credentialLookupTable[host] = credentials{
 				username: username,
 				password: password,
 			}
@@ -92,5 +92,5 @@ func LoadCredentialsFromDockerConfig(path string) (map[string]Credentials, error
 		fmt.Println("Unusable auth entry in docker config")
 	}
 
-	return hostToCredMapping, nil
+	return nil
 }

@@ -47,7 +47,12 @@ func buildUrl(host, endpoint string) string {
 	return fmt.Sprintf("https://%s/%s", host, endpoint)
 }
 
-func NewRegisty(host string, creds Credentials) (*Registry, error) {
+func NewRegisty(host string) (*Registry, error) {
+	creds, found := credentialLookupTable[host]
+	if !found {
+		return nil, fmt.Errorf("no credentials for %s", host)
+	}
+
 	resp, err := http.Head(buildUrl(host, "v2/_catalog"))
 	if err != nil {
 		return nil, err
