@@ -1,6 +1,9 @@
 package image
 
 import (
+	"fmt"
+	"regexp"
+
 	"github.com/sojamann/opcapi/registry"
 )
 
@@ -10,7 +13,13 @@ type ImageSpecifier struct {
 	Tag       string
 }
 
+var imageSpecifierRe = regexp.MustCompile(`[\w.-_]+\/([\w-_]+\/)*[\w-_]+:[\w-_]+`)
+
 func ImageSpecifierParse(s string) (*ImageSpecifier, error) {
+	if !imageSpecifierRe.MatchString(s) {
+		return nil, fmt.Errorf("'%s' does not seem to be a valid image specifier", s)
+	}
+
 	registryHost, imageName, tag := parseParts(s)
 
 	r, err := registry.NewRegisty(registryHost)
