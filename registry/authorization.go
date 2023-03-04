@@ -25,7 +25,7 @@ type token struct {
 	validUntil time.Time
 }
 
-type Authorizer interface {
+type authorizer interface {
 	// authorizes this request by making it
 	// and authenticating at the desired endpoint
 	authorizeRequest(*http.Request) error

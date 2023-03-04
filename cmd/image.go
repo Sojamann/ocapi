@@ -30,19 +30,14 @@ var imageLsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		registryHost := imagePattern.RegistryHost()
-
-		r, err := registry.NewRegisty(registryHost)
-
-		_, imageSpec, tagSpec := image.ParseParts(string(imagePattern))
-		specifiers, err := image.ExpandGlob(r, imageSpec, tagSpec)
+		specifiers, err := imagePattern.Expand()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Err: %v\n", err)
 			os.Exit(1)
 		}
 
 		for _, s := range specifiers {
-			fmt.Printf("%s/%s:%s\n", registryHost, s.ImageName, s.Tag)
+			fmt.Printf("%s/%s:%s\n", s.Registry.Host, s.ImageName, s.Tag)
 		}
 	},
 }

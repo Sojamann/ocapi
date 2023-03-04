@@ -33,8 +33,8 @@ type Manifest struct {
 }
 
 type Registry struct {
-	host string
-	auth Authorizer
+	Host string
+	auth authorizer
 }
 
 var ErrImageDoesNotExist = errors.New("image does not exist")
@@ -65,7 +65,7 @@ func NewRegisty(host string) (*Registry, error) {
 	}
 
 	return &Registry{
-		host: host,
+		Host: host,
 		auth: oauthAuthorizerFromChallenge(wwwAuth, creds),
 	}, nil
 }
@@ -109,7 +109,7 @@ func (r *Registry) request(request *http.Request) (*http.Response, error) {
 }
 
 func (r *Registry) GetCatalog() ([]string, error) {
-	catalogUrl := buildUrl(r.host, "v2/_catalog")
+	catalogUrl := buildUrl(r.Host, "v2/_catalog")
 	request, err := http.NewRequest("GET", catalogUrl, nil)
 	if err != nil {
 		return nil, err
@@ -143,7 +143,7 @@ func (r *Registry) GetTags(imageName string) ([]string, error) {
 	imageName = strings.TrimSuffix(imageName, "/")
 	imageName = strings.TrimPrefix(imageName, "/")
 
-	tagListUrl := buildUrl(r.host, fmt.Sprintf("v2/%s/tags/list", imageName))
+	tagListUrl := buildUrl(r.Host, fmt.Sprintf("v2/%s/tags/list", imageName))
 	request, err := http.NewRequest("GET", tagListUrl, nil)
 	if err != nil {
 		return nil, err
@@ -181,7 +181,7 @@ func (r *Registry) GetManifest(imageName string, tag string) (*Manifest, error) 
 	imageName = strings.TrimSuffix(imageName, "/")
 	imageName = strings.TrimPrefix(imageName, "/")
 
-	manifestUrl := buildUrl(r.host, fmt.Sprintf("v2/%s/manifests/%s", imageName, tag))
+	manifestUrl := buildUrl(r.Host, fmt.Sprintf("v2/%s/manifests/%s", imageName, tag))
 	request, err := http.NewRequest("GET", manifestUrl, nil)
 	if err != nil {
 		return nil, err

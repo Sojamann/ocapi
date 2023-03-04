@@ -8,6 +8,12 @@ import (
 	"github.com/sojamann/opcapi/registry"
 )
 
+type ImageSpecifier struct {
+	Registry  *registry.Registry
+	ImageName string
+	Tag       string
+}
+
 type ImagePattern string
 
 func (s *ImagePattern) IsValid() bool {
@@ -18,22 +24,18 @@ func (s *ImagePattern) IsValid() bool {
 	return r.MatchString(string(*s))
 }
 
-func (s *ImagePattern) RegistryHost() string {
-	registryHost, _, _ := ParseParts(string(*s))
-	return registryHost
-}
-
-type ImageSpecifier struct {
-	ImageName string
-	Tag       string
-}
-
 // TODO: there comments are not correct really anymore
 // It is a glob if the tag is given as asterix (*)
 // It is a glob if the name ends with /*
 // It is a glob if no tag is given
 // TODO: this is sequential as of now
-func ExpandGlob(r *registry.Registry, imageSpecifier, tagSpecifier string) ([]ImageSpecifier, error) {
+func (s *ImagePattern) Expand() ([]ImageSpecifier, error) {
+	registryHost, imageSpecifier, tagSpecifier := ParseParts(string(*s))
+
+	r, err := registry.NewRegisty(registryHost)
+	if err != nil {
+		return nil, err
+	}
 
 	imagesToCheck := make([]string, 0, 1)
 	if !strings.HasSuffix(imageSpecifier, "*") && !strings.HasSuffix(imageSpecifier, "/") {
@@ -55,7 +57,7 @@ func ExpandGlob(r *registry.Registry, imageSpecifier, tagSpecifier string) ([]Im
 	result := make([]ImageSpecifier, 0, 1)
 	for _, image := range imagesToCheck {
 		if tagSpecifier != "*" {
-			result = append(result, ImageSpecifier{image, tagSpecifier})
+			result = append(result, ImageSpecifier{r, image, tagSpecifier})
 		}
 		tags, err := r.GetTags(image)
 		if err != nil {
@@ -63,7 +65,7 @@ func ExpandGlob(r *registry.Registry, imageSpecifier, tagSpecifier string) ([]Im
 		}
 
 		for _, tag := range tags {
-			result = append(result, ImageSpecifier{image, tag})
+			result = append(result, ImageSpecifier{r, image, tag})
 		}
 	}
 
