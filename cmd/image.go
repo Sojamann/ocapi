@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/sojamann/opcapi/image"
-	"github.com/sojamann/opcapi/registry"
 	"github.com/spf13/cobra"
 )
 
@@ -47,23 +46,20 @@ var imageShowCmd = &cobra.Command{
 	Short: "show short desc",
 	Long:  "show long desc",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		registryHost, imageName, tag := image.ParseParts(args[0])
-
-		r, err := registry.NewRegisty(registryHost)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		imageSpecifier, err := image.ImageSpecifierParse(args[0])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Err: %v\n", err)
-			os.Exit(1)
+			return err
 		}
 
-		manifest, err := r.GetManifest(imageName, tag)
+		img, err := imageSpecifier.ToImage()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Err: %v\n", err)
-			os.Exit(1)
+			return err
 		}
 
-		img := image.ImageFromManifest(manifest)
 		fmt.Println(img)
+
+		return nil
 	},
 }
 
