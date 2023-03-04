@@ -27,5 +27,5 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&flagDockerConfig, "config", "c", "~/.docker/config.json", "Path to the config with the credentials")
+	rootCmd.PersistentFlags().StringVar(&flagDockerConfig, "docker-config", "~/.docker/config.json", "Path to the config with the credentials")
 }

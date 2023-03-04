@@ -1,6 +1,7 @@
 package image
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/sojamann/opcapi/registry"
@@ -51,12 +52,28 @@ func (image *Image) IsParentOf(child *Image) bool {
 }
 
 func (image *Image) String() string {
+	width := len(image.layers[0])
+	center := func(s string) string {
+		return fmt.Sprintf("%*s", -width, fmt.Sprintf("%*s", (width+len(s))/2, s))
+	}
+
 	builder := strings.Builder{}
-	builder.WriteString(image.name + ":" + image.tag)
+
+	seperator := strings.Repeat("-", width+4) + "\n"
+
+	builder.WriteString(seperator)
+	builder.WriteString("| ")
+	builder.WriteString(center(fmt.Sprintf("[ %s ]", image.name+":"+image.tag)))
+	builder.WriteString(" |")
 	builder.WriteRune('\n')
+	builder.WriteString(seperator)
+
 	for _, layer := range image.layers {
-		builder.WriteString(layer)
+		builder.WriteString("| ")
+		builder.WriteString(center(layer))
+		builder.WriteString(" |")
 		builder.WriteRune('\n')
 	}
+	builder.WriteString(seperator)
 	return builder.String()
 }

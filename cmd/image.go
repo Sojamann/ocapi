@@ -47,8 +47,34 @@ var imageLsCmd = &cobra.Command{
 	},
 }
 
+var imageShowCmd = &cobra.Command{
+	Use:   "show registry/image:tag",
+	Short: "show short desc",
+	Long:  "show long desc",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		registryHost, imageName, tag := image.ParseParts(args[0])
+
+		r, err := registry.NewRegisty(registryHost)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Err: %v\n", err)
+			os.Exit(1)
+		}
+
+		manifest, err := r.GetManifest(imageName, tag)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Err: %v\n", err)
+			os.Exit(1)
+		}
+
+		img := image.ImageFromManifest(manifest)
+		fmt.Println(img)
+	},
+}
+
 func init() {
 	imageCmd.AddCommand(imageLsCmd)
+	imageCmd.AddCommand(imageShowCmd)
 
 	rootCmd.AddCommand(imageCmd)
 }
