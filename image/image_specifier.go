@@ -2,8 +2,10 @@ package image
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/sojamann/opcapi/registry"
 )
@@ -30,6 +32,10 @@ func (s *ImagePattern) IsValid() bool {
 // It is a glob if no tag is given
 // TODO: this is sequential as of now
 func (s *ImagePattern) Expand() ([]ImageSpecifier, error) {
+	if !s.IsValid() {
+		panic("Expanding not validated ImagePattern is not okay .....")
+	}
+
 	registryHost, imageSpecifier, tagSpecifier := ParseParts(string(*s))
 
 	r, err := registry.NewRegisty(registryHost)
@@ -37,6 +43,7 @@ func (s *ImagePattern) Expand() ([]ImageSpecifier, error) {
 		return nil, err
 	}
 
+	// resolve imageSpecifier
 	imagesToCheck := make([]string, 0, 1)
 	if !strings.HasSuffix(imageSpecifier, "*") && !strings.HasSuffix(imageSpecifier, "/") {
 		imagesToCheck = append(imagesToCheck, imageSpecifier)
@@ -55,19 +62,39 @@ func (s *ImagePattern) Expand() ([]ImageSpecifier, error) {
 	}
 
 	result := make([]ImageSpecifier, 0, 1)
-	for _, image := range imagesToCheck {
-		if tagSpecifier != "*" {
+
+	// if tagSpecifier is not a wildcard end this function early
+	if tagSpecifier != "*" {
+		for _, image := range imagesToCheck {
 			result = append(result, ImageSpecifier{r, image, tagSpecifier})
 		}
-		tags, err := r.GetTags(image)
-		if err != nil {
-			return nil, err
-		}
 
-		for _, tag := range tags {
-			result = append(result, ImageSpecifier{r, image, tag})
-		}
+		return result, nil
 	}
+
+	// fetch all tags of the images in parallel
+	var wg sync.WaitGroup
+	var lock sync.Mutex
+	wg.Add(len(imagesToCheck))
+	for _, image := range imagesToCheck {
+		go func(image string) {
+			defer wg.Done()
+
+			tags, err := r.GetTags(image)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed getting tags for %s due to: %v", image, err)
+				return
+			}
+
+			lock.Lock()
+			for _, tag := range tags {
+				result = append(result, ImageSpecifier{r, image, tag})
+			}
+			lock.Unlock()
+		}(image)
+	}
+
+	wg.Wait()
 
 	return result, nil
 }

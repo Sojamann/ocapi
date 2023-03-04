@@ -121,6 +121,9 @@ func (r *Registry) GetCatalog() ([]string, error) {
 
 	resp, err := r.request(request)
 	if err != nil {
+		if errors.Is(err, ErrNotAllowedOrUnavailable) {
+			return nil, fmt.Errorf("you don't seem to have permission to request the image catalog of the registry %s", r.Host)
+		}
 		return nil, err
 	}
 
