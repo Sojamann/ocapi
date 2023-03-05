@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/life4/genesis/slices"
 	"github.com/sojamann/opcapi/image"
+	"github.com/sojamann/opcapi/sliceops"
 	"github.com/spf13/cobra"
 )
 
@@ -80,19 +80,17 @@ var imageBasedOnCmd = &cobra.Command{
 		validateArgNo(1, image.ValidateImagePattern),
 	),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		childImgSpecifier, err := image.ImageSpecifierParse(args[0])
-		if err != nil {
-			return err
-		}
-
 		parentImagePattern := image.ImagePattern(args[1])
-
 		parentImgSpecifiers, err := parentImagePattern.Expand()
 		if err != nil {
 			return err
 		}
 
-		img, err := childImgSpecifier.ToImage()
+		childImgSpecifier, err := image.ImageSpecifierParse(args[0])
+		if err != nil {
+			return err
+		}
+		childImg, err := childImgSpecifier.ToImage()
 		if err != nil {
 			return err
 		}
@@ -101,8 +99,7 @@ var imageBasedOnCmd = &cobra.Command{
 			img *image.Image
 			err error
 		}
-
-		getImgResults := slices.MapAsync(parentImgSpecifiers, 0, func(sp image.ImageSpecifier) getImageResult {
+		getImgResults := sliceops.MapAsync(parentImgSpecifiers, func(sp image.ImageSpecifier) getImageResult {
 			img, err := sp.ToImage()
 			return getImageResult{img, err}
 		})
@@ -113,7 +110,7 @@ var imageBasedOnCmd = &cobra.Command{
 				return res.err
 			}
 
-			if res.img.IsParentOf(img) {
+			if res.img.IsParentOf(childImg) {
 				fmt.Println(res.img.FullyQualifiedName())
 				matched = true
 			}
