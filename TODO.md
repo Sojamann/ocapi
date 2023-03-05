@@ -1,6 +1,5 @@
 # Features
 [ ] Image diff
-[ ] Image based on ImageSpecifier ImagePattern
 
 
 # Usability

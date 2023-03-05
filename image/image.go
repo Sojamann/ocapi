@@ -8,25 +8,30 @@ import (
 )
 
 type Image struct {
+	registryHost string
 	name         string
 	tag          string
 	architecture string
 	layers       []string
 }
 
-func ImageFromManifest(mp *registry.Manifest) *Image {
+func ImageFromManifest(registryHost string, mp *registry.Manifest) *Image {
 	layers := make([]string, 0, len(mp.FsLayers))
 
 	for _, layer := range mp.FsLayers {
 		layers = append(layers, layer.BlobSum)
 	}
-
 	return &Image{
+		registryHost: registryHost,
 		name:         mp.Name,
 		tag:          mp.Tag,
 		architecture: mp.Architecture,
 		layers:       layers,
 	}
+}
+
+func (image *Image) FullyQualifiedName() string {
+	return fmt.Sprintf("%s/%s:%s", image.registryHost, image.name, image.tag)
 }
 
 // For this function to return true parent must be a true base image

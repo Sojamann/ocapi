@@ -10,14 +10,29 @@ import (
 	"github.com/sojamann/opcapi/registry"
 )
 
+const registryPattern = `[\w.-_]+`
+const imagePattern = `(\*|(([\w-_]+)+)(\*|\/)?)`
+const tagPattern = `(\*|[\w-_]+)`
+
+var imagePatternRe = regexp.MustCompile(fmt.Sprintf("^%s/%s:%s$", registryPattern, imagePattern, tagPattern))
+
 type ImagePattern string
 
+type InvalidImagePattern string
+
+func (s InvalidImagePattern) Error() string {
+	return fmt.Sprintf("'%s' is not a valid image pattern (%s)", string(s), imagePatternRe.String())
+}
+
+func ValidateImagePattern(s string) error {
+	if imagePatternRe.MatchString(s) {
+		return nil
+	}
+	return InvalidImagePattern(s)
+}
+
 func (s *ImagePattern) IsValid() bool {
-	registryPattern := `[\w.-_]+`
-	imagePattern := `(\*|(([\w-_]+)+)(\*|\/)?)`
-	tagPattern := `(\*|[\w-_]+)`
-	r := regexp.MustCompile(fmt.Sprintf("^%s/%s:%s$", registryPattern, imagePattern, tagPattern))
-	return r.MatchString(string(*s))
+	return ValidateImagePattern(string(*s)) != nil
 }
 
 // TODO: there comments are not correct really anymore
@@ -26,6 +41,7 @@ func (s *ImagePattern) IsValid() bool {
 // It is a glob if no tag is given
 // TODO: this is sequential as of now
 func (s *ImagePattern) Expand() ([]ImageSpecifier, error) {
+	// TODO: maybe return an error instead of a panic??
 	if !s.IsValid() {
 		panic("Expanding not validated ImagePattern is not okay .....")
 	}

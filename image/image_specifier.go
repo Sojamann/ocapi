@@ -15,9 +15,22 @@ type ImageSpecifier struct {
 
 var imageSpecifierRe = regexp.MustCompile(`^[\w.-_]+\/([\w-_]+\/)*[\w-_]+:[\w-_]+$`)
 
+type InvalidImageSpecifier string
+
+func (s InvalidImageSpecifier) Error() string {
+	return fmt.Sprintf("'%s' is not a valid image specifier (%s)", string(s), imageSpecifierRe.String())
+}
+
+func ValidateImageSpecifier(s string) error {
+	if imageSpecifierRe.MatchString(s) {
+		return nil
+	}
+	return InvalidImageSpecifier(s)
+}
+
 func ImageSpecifierParse(s string) (*ImageSpecifier, error) {
 	if !imageSpecifierRe.MatchString(s) {
-		return nil, fmt.Errorf("'%s' does not seem to be a valid image specifier", s)
+		return nil, InvalidImageSpecifier(s)
 	}
 
 	registryHost, imageName, tag := parseParts(s)
@@ -40,7 +53,7 @@ func (is *ImageSpecifier) ToImage() (*Image, error) {
 		return nil, err
 	}
 
-	return ImageFromManifest(manifest), nil
+	return ImageFromManifest(is.Registry.Host, manifest), nil
 }
 
 func (is ImageSpecifier) String() string {

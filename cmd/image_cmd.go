@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/life4/genesis/slices"
 	"github.com/sojamann/opcapi/image"
 	"github.com/spf13/cobra"
 )
@@ -21,7 +22,10 @@ var imageLsCmd = &cobra.Command{
 	Use:   "ls pattern",
 	Short: "ls short desc",
 	Long:  "ls long desc",
-	Args:  cobra.ExactArgs(1),
+	Args: cobra.MatchAll(
+		cobra.ExactArgs(1),
+		validateArgNo(0, image.ValidateImagePattern),
+	),
 	Run: func(cmd *cobra.Command, args []string) {
 		imagePattern := image.ImagePattern(args[0])
 		if !imagePattern.IsValid() {
@@ -45,7 +49,10 @@ var imageShowCmd = &cobra.Command{
 	Use:   "show registry/image:tag",
 	Short: "show short desc",
 	Long:  "show long desc",
-	Args:  cobra.ExactArgs(1),
+	Args: cobra.MatchAll(
+		cobra.ExactArgs(1),
+		validateArgNo(0, image.ValidateImageSpecifier),
+	),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		imageSpecifier, err := image.ImageSpecifierParse(args[0])
 		if err != nil {
@@ -67,7 +74,11 @@ var imageBasedOnCmd = &cobra.Command{
 	Use:   "based-on registry/image:tag registry/images/*:*",
 	Short: "based-on short desc",
 	Long:  "based-on long desc",
-	Args:  cobra.ExactArgs(2),
+	Args: cobra.MatchAll(
+		cobra.ExactArgs(2),
+		validateArgNo(0, image.ValidateImageSpecifier),
+		validateArgNo(1, image.ValidateImagePattern),
+	),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		childImgSpecifier, err := image.ImageSpecifierParse(args[0])
 		if err != nil {
@@ -75,9 +86,6 @@ var imageBasedOnCmd = &cobra.Command{
 		}
 
 		parentImagePattern := image.ImagePattern(args[1])
-		if !parentImagePattern.IsValid() {
-			return fmt.Errorf("image pattern '%s' does not seem to be valid", args[1])
-		}
 
 		parentImgSpecifiers, err := parentImagePattern.Expand()
 		if err != nil {
@@ -89,15 +97,24 @@ var imageBasedOnCmd = &cobra.Command{
 			return err
 		}
 
+		type getImageResult struct {
+			img *image.Image
+			err error
+		}
+
+		getImgResults := slices.MapAsync(parentImgSpecifiers, 0, func(sp image.ImageSpecifier) getImageResult {
+			img, err := sp.ToImage()
+			return getImageResult{img, err}
+		})
+
 		matched := false
-		for _, parentImgSpecifier := range parentImgSpecifiers {
-			parentImg, err := parentImgSpecifier.ToImage()
-			if err != nil {
-				return err
+		for _, res := range getImgResults {
+			if res.err != nil {
+				return res.err
 			}
 
-			if parentImg.IsParentOf(img) {
-				fmt.Println(parentImgSpecifier)
+			if res.img.IsParentOf(img) {
+				fmt.Println(res.img.FullyQualifiedName())
 				matched = true
 			}
 		}
