@@ -11,8 +11,8 @@ import (
 
 var imageCmd = &cobra.Command{
 	Use:   "image",
-	Short: "image short desc",
-	Long:  "image long desc",
+	Short: "Analyze OCI images",
+	Long:  "Analyze OCI images",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(flagDockerConfig)
 	},
@@ -20,8 +20,8 @@ var imageCmd = &cobra.Command{
 
 var imageLsCmd = &cobra.Command{
 	Use:   "ls pattern",
-	Short: "ls short desc",
-	Long:  "ls long desc",
+	Short: "List all images matching the pattern",
+	Long:  "List all images matching the pattern",
 	Args: cobra.MatchAll(
 		cobra.ExactArgs(1),
 		validateArgNo(0, image.ValidateImagePattern),
@@ -47,8 +47,8 @@ var imageLsCmd = &cobra.Command{
 
 var imageShowCmd = &cobra.Command{
 	Use:   "show registry/image:tag",
-	Short: "show short desc",
-	Long:  "show long desc",
+	Short: "Show OCI image",
+	Long:  "Show OCI image",
 	Args: cobra.MatchAll(
 		cobra.ExactArgs(1),
 		validateArgNo(0, image.ValidateImageSpecifier),
@@ -72,8 +72,8 @@ var imageShowCmd = &cobra.Command{
 
 var imageBasedOnCmd = &cobra.Command{
 	Use:   "based-on registry/image:tag registry/images/*:*",
-	Short: "based-on short desc",
-	Long:  "based-on long desc",
+	Short: "Check base of image",
+	Long:  "List all images matching the pattern on which the specified image a is based on",
 	Args: cobra.MatchAll(
 		cobra.ExactArgs(2),
 		validateArgNo(0, image.ValidateImageSpecifier),
