@@ -39,7 +39,7 @@ func (s *ImagePattern) IsValid() bool {
 // It is a glob if the name ends with /*
 // It is a glob if no tag is given
 // TODO: this is sequential as of now
-func (s *ImagePattern) Expand() ([]ImageSpecifier, error) {
+func (s *ImagePattern) ExpandToSpecifiers() ([]ImageSpecifier, error) {
 	// TODO: maybe return an error instead of a panic??
 	if !s.IsValid() {
 		panic("Expanding non validated ImagePattern is not okay .....")
@@ -101,4 +101,31 @@ func (s *ImagePattern) Expand() ([]ImageSpecifier, error) {
 	}
 
 	return imageSpecifiers, nil
+}
+
+func (s *ImagePattern) ExpandToImages() ([]*Image, error) {
+	specifiers, err := s.ExpandToSpecifiers()
+	if err != nil {
+		return nil, err
+	}
+
+	type result struct {
+		img *Image
+		err error
+	}
+	imageGetResult := sliceops.MapAsync(specifiers, func(sp ImageSpecifier) result {
+		img, err := sp.ToImage()
+		return result{img, err}
+	})
+
+	images := make([]*Image, 0, len(specifiers))
+	for _, result := range imageGetResult {
+		if result.err != nil {
+			return nil, result.err
+		}
+
+		images = append(images, result.img)
+	}
+
+	return images, nil
 }

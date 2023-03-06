@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/sojamann/opcapi/image"
-	"github.com/sojamann/opcapi/sliceops"
 	"github.com/spf13/cobra"
 )
 
@@ -33,7 +32,7 @@ var imageLsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		specifiers, err := imagePattern.Expand()
+		specifiers, err := imagePattern.ExpandToSpecifiers()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Err: %v\n", err)
 			os.Exit(1)
@@ -80,12 +79,6 @@ var imageBasedOnCmd = &cobra.Command{
 		validateArgNo(1, image.ValidateImagePattern),
 	),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		parentImagePattern := image.ImagePattern(args[1])
-		parentImgSpecifiers, err := parentImagePattern.Expand()
-		if err != nil {
-			return err
-		}
-
 		childImgSpecifier, err := image.ImageSpecifierParse(args[0])
 		if err != nil {
 			return err
@@ -95,23 +88,16 @@ var imageBasedOnCmd = &cobra.Command{
 			return err
 		}
 
-		type getImageResult struct {
-			img *image.Image
-			err error
+		parentImgPattern := image.ImagePattern(args[1])
+		parentImgs, err := parentImgPattern.ExpandToImages()
+		if err != nil {
+			return err
 		}
-		getImgResults := sliceops.MapAsync(parentImgSpecifiers, func(sp image.ImageSpecifier) getImageResult {
-			img, err := sp.ToImage()
-			return getImageResult{img, err}
-		})
 
 		matched := false
-		for _, res := range getImgResults {
-			if res.err != nil {
-				return res.err
-			}
-
-			if res.img.IsParentOf(childImg) {
-				fmt.Println(res.img.FullyQualifiedName())
+		for _, parentImg := range parentImgs {
+			if parentImg.IsParentOf(childImg) {
+				fmt.Println(parentImg.FullyQualifiedName())
 				matched = true
 			}
 		}
@@ -136,38 +122,25 @@ var imageBaseOfCmd = &cobra.Command{
 		validateArgNo(1, image.ValidateImagePattern),
 	),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		parentImagePattern := image.ImagePattern(args[1])
-		parentImgSpecifiers, err := parentImagePattern.Expand()
+		parentImgSpecifier, err := image.ImageSpecifierParse(args[0])
+		if err != nil {
+			return err
+		}
+		parentImg, err := parentImgSpecifier.ToImage()
 		if err != nil {
 			return err
 		}
 
-		childImgSpecifier, err := image.ImageSpecifierParse(args[0])
+		childImgPattern := image.ImagePattern(args[1])
+		childImgs, err := childImgPattern.ExpandToImages()
 		if err != nil {
 			return err
 		}
-		childImg, err := childImgSpecifier.ToImage()
-		if err != nil {
-			return err
-		}
-
-		type getImageResult struct {
-			img *image.Image
-			err error
-		}
-		getImgResults := sliceops.MapAsync(parentImgSpecifiers, func(sp image.ImageSpecifier) getImageResult {
-			img, err := sp.ToImage()
-			return getImageResult{img, err}
-		})
 
 		matched := false
-		for _, res := range getImgResults {
-			if res.err != nil {
-				return res.err
-			}
-
-			if res.img.IsParentOf(childImg) {
-				fmt.Println(res.img.FullyQualifiedName())
+		for _, childImg := range childImgs {
+			if parentImg.IsParentOf(childImg) {
+				fmt.Println(childImg.FullyQualifiedName())
 				matched = true
 			}
 		}
