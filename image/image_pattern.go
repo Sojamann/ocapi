@@ -11,7 +11,7 @@ import (
 
 const registryPattern = `[\w.-_]+`
 const imagePattern = `(\*|(([\w-_]+)+)(\*|\/)?)`
-const tagPattern = `(\*|[\w-_]+)`
+const tagPattern = `(\*|[\w-_.]+)`
 
 var imagePatternRe = regexp.MustCompile(fmt.Sprintf("^%s/%s:%s$", registryPattern, imagePattern, tagPattern))
 
