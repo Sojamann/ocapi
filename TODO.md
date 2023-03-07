@@ -10,5 +10,18 @@
     the server does not like this
 
 # Usability
-[ ] good tui design with https://github.com/charmbracelet
+[ ] good tui design
 [ ] clear error handling
+
+
+# Libs that might be of use
+Futures, Result, Optional, ....
+ -> https://pkg.go.dev/github.com/samber/mo@v1.8.0
+
+Functional programming, ....
+ -> https://pkg.go.dev/github.com/samber/lo@v1.37.0
+
+TUI
+ -> ps://github.com/charmbracelet/bubbletea
+ -> ps://github.com/charmbracelet/lipgloss
+ -> ps://github.com/charmbracelet/bubbles
