@@ -213,3 +213,27 @@ func (r *Registry) GetManifest(imageName string, tag string) (*Manifest, error) 
 
 	return &manifest, nil
 }
+
+func (r *Registry) Exists(imageName string, tag string) (bool, error) {
+	imageName = strings.TrimSuffix(imageName, "/")
+	imageName = strings.TrimPrefix(imageName, "/")
+
+	manifestUrl := buildUrl(r.Host, fmt.Sprintf("v2/%s/manifests/%s", imageName, tag))
+	request, err := http.NewRequest("HEAD", manifestUrl, nil)
+	if err != nil {
+		return false, err
+	}
+
+	if err = r.auth.authorizeRepoPull(request, imageName); err != nil {
+		return false, err
+	}
+
+	resp, err := r.request(request)
+	if err != nil {
+		return false, err
+	}
+
+	defer resp.Body.Close()
+
+	return resp.StatusCode == 200, nil
+}

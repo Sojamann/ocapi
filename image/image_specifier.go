@@ -47,6 +47,10 @@ func ImageSpecifierParse(s string) (*ImageSpecifier, error) {
 	}, nil
 }
 
+func (is *ImageSpecifier) Exists() (bool, error) {
+	return is.Registry.Exists(is.ImageName, is.Tag)
+}
+
 func (is *ImageSpecifier) ToImage() (*Image, error) {
 	manifest, err := is.Registry.GetManifest(is.ImageName, is.Tag)
 	if err != nil {
