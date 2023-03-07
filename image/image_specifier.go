@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/sojamann/opcapi/registry"
+	"github.com/sojamann/ocapi/registry"
 )
 
 type ImageSpecifier struct {
@@ -13,7 +13,7 @@ type ImageSpecifier struct {
 	Tag       string
 }
 
-var imageSpecifierRe = regexp.MustCompile(`^[\w.-_]+\/([\w-_]+\/)*[\w-_]+:[\w-_.]+$`)
+var imageSpecifierRe = regexp.MustCompile(`^[\w.-_]+\/([\w-_.]+\/)*[\w-_.]+:[\w-_.]+$`)
 
 type InvalidImageSpecifier string
 

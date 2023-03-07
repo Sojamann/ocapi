@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sojamann/opcapi/image"
+	"github.com/sojamann/ocapi/image"
 	"github.com/spf13/cobra"
 )
 

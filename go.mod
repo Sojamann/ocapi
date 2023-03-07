@@ -1,4 +1,4 @@
-module github.com/sojamann/opcapi
+module github.com/sojamann/ocapi
 
 go 1.18
 

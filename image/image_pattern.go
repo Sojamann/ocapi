@@ -5,12 +5,12 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/sojamann/opcapi/registry"
-	"github.com/sojamann/opcapi/sliceops"
+	"github.com/sojamann/ocapi/registry"
+	"github.com/sojamann/ocapi/sliceops"
 )
 
 const registryPattern = `[\w.-_]+`
-const imagePattern = `(\*|(([\w-_]+)+)(\*|\/)?)`
+const imagePattern = `(\*|([\w-_./]+)(\*|\/)?)`
 const tagPattern = `(\*|[\w-_.]+)`
 
 var imagePatternRe = regexp.MustCompile(fmt.Sprintf("^%s/%s:%s$", registryPattern, imagePattern, tagPattern))

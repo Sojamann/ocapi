@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sojamann/opcapi/registry"
+	"github.com/sojamann/ocapi/registry"
 	"github.com/spf13/cobra"
 )
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sojamann/opcapi/registry"
+	"github.com/sojamann/ocapi/registry"
 )
 
 type Image struct {

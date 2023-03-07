@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/sojamann/opcapi/cmd"
+	"github.com/sojamann/ocapi/cmd"
 )
 
 func main() {
