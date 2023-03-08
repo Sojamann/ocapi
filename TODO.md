@@ -1,3 +1,9 @@
+# Next Steps
+[ ] add doc to task.go
+[ ] task chaining
+[ ] rename sliceops
+[ ] adapt sliceops so that they return a task
+
 # Features
 [ ] Image diff
 [ ] Registry graph
@@ -12,6 +18,12 @@
 # Usability
 [ ] good tui design
 [ ] clear error handling
+
+
+
+
+
+
 
 
 # Libs that might be of use
