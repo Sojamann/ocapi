@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+const maxParallelRequests = 5
+
 type catalogResponse struct {
 	Repositories []string `json:"repositories"`
 }
@@ -35,6 +37,10 @@ type Manifest struct {
 type Registry struct {
 	Host string
 	auth authorizer
+	// this cannel is used like n-locks. N is determined by
+	// the buffer size and allows max n goroutines to
+	// perform parallel requests. Others have to wait...
+	throttleChan chan any
 }
 
 var ErrImageDoesNotExist = errors.New("image does not exist")
@@ -65,8 +71,9 @@ func NewRegisty(host string) (*Registry, error) {
 	}
 
 	return &Registry{
-		Host: host,
-		auth: oauthAuthorizerFromChallenge(wwwAuth, creds),
+		Host:         host,
+		auth:         oauthAuthorizerFromChallenge(wwwAuth, creds),
+		throttleChan: make(chan any, maxParallelRequests),
 	}, nil
 }
 
@@ -75,7 +82,13 @@ func NewRegisty(host string) (*Registry, error) {
 func (r *Registry) request(request *http.Request) (*http.Response, error) {
 	request.Header.Set("Accept-Encoding", "*")
 
+	// Send something into the channel. Either it blocks and we have to
+	// wait until it is free or we can request right away and read from
+	// it later to unblock. (chan = n locks)
+	r.throttleChan <- nil
 	resp, err := http.DefaultClient.Do(request)
+	<-r.throttleChan
+
 	if err != nil {
 		return nil, err
 	}
