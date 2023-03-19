@@ -7,9 +7,15 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 const maxParallelRequests = 5
+
+// a map that stores the throtteling channel to use
+// per host so that we don't create multiple registries
+// and end up spamming the host again.
+var throttleChanByHost sync.Map
 
 type catalogResponse struct {
 	Repositories []string `json:"repositories"`
@@ -70,10 +76,13 @@ func NewRegisty(host string) (*Registry, error) {
 		return nil, fmt.Errorf("expected auth challenge from registry, but got: %s", resp.Status)
 	}
 
+	// if another registry for the same host exists, use the same throttling channel
+	throttleChan, _ := throttleChanByHost.LoadOrStore(host, make(chan any, maxParallelRequests))
+
 	return &Registry{
 		Host:         host,
 		auth:         oauthAuthorizerFromChallenge(wwwAuth, creds),
-		throttleChan: make(chan any, maxParallelRequests),
+		throttleChan: throttleChan.(chan any),
 	}, nil
 }
 
