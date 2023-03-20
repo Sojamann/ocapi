@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/rs/zerolog/log"
 )
 
 const maxParallelRequests = 5
@@ -95,6 +97,7 @@ func (r *Registry) request(request *http.Request) (*http.Response, error) {
 	// wait until it is free or we can request right away and read from
 	// it later to unblock. (chan = n locks)
 	r.throttleChan <- nil
+	log.Debug().Str("host", r.Host).Str("url", request.RequestURI)
 	resp, err := http.DefaultClient.Do(request)
 	<-r.throttleChan
 
@@ -132,6 +135,7 @@ func (r *Registry) request(request *http.Request) (*http.Response, error) {
 
 func (r *Registry) GetCatalog() ([]string, error) {
 	catalogUrl := buildUrl(r.Host, "v2/_catalog")
+	log.Debug().Str("host", r.Host).Msg("getting catalog")
 	request, err := http.NewRequest("GET", catalogUrl, nil)
 	if err != nil {
 		return nil, err
@@ -169,6 +173,7 @@ func (r *Registry) GetTags(imageName string) ([]string, error) {
 	imageName = strings.TrimPrefix(imageName, "/")
 
 	tagListUrl := buildUrl(r.Host, fmt.Sprintf("v2/%s/tags/list", imageName))
+	log.Debug().Str("host", r.Host).Str("image", imageName).Msg("getting tags")
 	request, err := http.NewRequest("GET", tagListUrl, nil)
 	if err != nil {
 		return nil, err
@@ -207,6 +212,7 @@ func (r *Registry) GetManifest(imageName string, tag string) (*Manifest, error) 
 	imageName = strings.TrimPrefix(imageName, "/")
 
 	manifestUrl := buildUrl(r.Host, fmt.Sprintf("v2/%s/manifests/%s", imageName, tag))
+	log.Debug().Str("host", r.Host).Str("image", imageName).Str("tag", tag).Msg("getting manifest")
 	request, err := http.NewRequest("GET", manifestUrl, nil)
 	if err != nil {
 		return nil, err

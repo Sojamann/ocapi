@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	"github.com/sojamann/ocapi/registry"
 	"github.com/sojamann/ocapi/sliceops"
 )
@@ -45,6 +46,7 @@ func (s *ImagePattern) ExpandToSpecifiers() ([]ImageSpecifier, error) {
 		panic("Expanding non validated ImagePattern is not okay .....")
 	}
 
+	log.Debug().Str("pattern", string(*s)).Msg("expanind image pattern")
 	registryHost, imageSpecifier, tagSpecifier := parseParts(string(*s))
 
 	r, err := registry.NewRegisty(registryHost)
@@ -93,6 +95,8 @@ func (s *ImagePattern) ExpandToImages() ([]*Image, error) {
 // all images below this path: some/image/
 // full image path no need to expand: some/image/image
 func expandImageName(r *registry.Registry, imageName string) ([]string, error) {
+	log.Debug().Str("host", r.Host).Str("image", imageName).Msg("expanding image name")
+
 	images := make([]string, 0, 1)
 
 	// if there is no glob syntax -> we can end it here
@@ -116,6 +120,9 @@ func expandImageName(r *registry.Registry, imageName string) ([]string, error) {
 }
 
 func expandTagName(r *registry.Registry, images []string, tagName string) ([]ImageSpecifier, error) {
+	for _, image := range images {
+		log.Debug().Str("host", r.Host).Str("image", image).Str("tag", tagName).Msg("expanding tag")
+	}
 	imageSpecifiers := make([]ImageSpecifier, 0, 1)
 
 	// when the tag is specified add the tag to all images but make sure
