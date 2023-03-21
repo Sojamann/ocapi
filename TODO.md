@@ -1,19 +1,13 @@
 # Next Steps
-[ ] add doc to task.go
-[ ] task chaining
-[ ] rename sliceops
-[ ] adapt sliceops so that they return a task
+[ ] remove sliceops?
+[ ] we have throttleing through MapAsync and the throttleChan in repository
+    we should do this in one spot only
 
 # Features
 [ ] Image diff
 [ ] Registry graph
 [ ] Base swap
 [ ] other config formats besides docker
-
-# Perf / ??
-[ ] we must limit the amount of requests that go out!!
-    if we fetch all images/manifests than we make 1000+ requests
-    the server does not like this
 
 # Usability
 [ ] good tui design

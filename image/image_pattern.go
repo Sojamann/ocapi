@@ -5,9 +5,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/life4/genesis/slices"
 	"github.com/rs/zerolog/log"
 	"github.com/sojamann/ocapi/registry"
-	"github.com/sojamann/ocapi/sliceops"
 )
 
 const registryPattern = `[\w.-_]+`
@@ -46,7 +46,7 @@ func (s *ImagePattern) ExpandToSpecifiers() ([]ImageSpecifier, error) {
 		panic("Expanding non validated ImagePattern is not okay .....")
 	}
 
-	log.Debug().Str("pattern", string(*s)).Msg("expanind image pattern")
+	log.Debug().Str("pattern", string(*s)).Msg("expanding image pattern")
 	registryHost, imageSpecifier, tagSpecifier := parseParts(string(*s))
 
 	r, err := registry.NewRegisty(registryHost)
@@ -55,11 +55,29 @@ func (s *ImagePattern) ExpandToSpecifiers() ([]ImageSpecifier, error) {
 	}
 
 	// resolve imageSpecifier
-	matchingImageNames, err := expandImageName(r, imageSpecifier)
+	matchingImageNames, err := expandImageSpecifier(r, imageSpecifier)
 	if err != nil {
 		return nil, err
 	}
-	return expandTagName(r, matchingImageNames, tagSpecifier)
+
+	type result struct {
+		is  []ImageSpecifier
+		err error
+	}
+	tagResults := slices.MapAsync(matchingImageNames, 5, func(image string) result {
+		is, err := expandTagSpecifier(r, image, tagSpecifier)
+		return result{is, err}
+	})
+
+	imageSpecifiers := make([]ImageSpecifier, 0, len(matchingImageNames))
+	for _, result := range tagResults {
+		if result.err != nil {
+			return nil, err
+		}
+		imageSpecifiers = append(imageSpecifiers, result.is...)
+	}
+
+	return imageSpecifiers, nil
 }
 
 func (s *ImagePattern) ExpandToImages() ([]*Image, error) {
@@ -72,7 +90,7 @@ func (s *ImagePattern) ExpandToImages() ([]*Image, error) {
 		img *Image
 		err error
 	}
-	imageGetResult := sliceops.MapAsync(specifiers, func(sp ImageSpecifier) result {
+	imageGetResult := slices.MapAsync(specifiers, 10, func(sp ImageSpecifier) result {
 		img, err := sp.ToImage()
 		return result{img, err}
 	})
@@ -94,7 +112,7 @@ func (s *ImagePattern) ExpandToImages() ([]*Image, error) {
 // all images below this path: some/image/*
 // all images below this path: some/image/
 // full image path no need to expand: some/image/image
-func expandImageName(r *registry.Registry, imageName string) ([]string, error) {
+func expandImageSpecifier(r *registry.Registry, imageName string) ([]string, error) {
 	log.Debug().Str("host", r.Host).Str("image", imageName).Msg("expanding image name")
 
 	images := make([]string, 0, 1)
@@ -110,55 +128,36 @@ func expandImageName(r *registry.Registry, imageName string) ([]string, error) {
 		return nil, err
 	}
 
-	matcher := regexp.MustCompile(strings.TrimRight(imageName, "*") + ".*")
-	for _, image := range images {
-		if matcher.MatchString(image) {
-			images = append(images, image)
-		}
-	}
-	return images, nil
+	matcher := regexp.MustCompile("^" + strings.TrimRight(imageName, "*") + ".*")
+	return slices.Filter(images, matcher.MatchString), nil
 }
 
-func expandTagName(r *registry.Registry, images []string, tagName string) ([]ImageSpecifier, error) {
-	for _, image := range images {
-		log.Debug().Str("host", r.Host).Str("image", image).Str("tag", tagName).Msg("expanding tag")
-	}
+func expandTagSpecifier(r *registry.Registry, image string, tagName string) ([]ImageSpecifier, error) {
+	log.Debug().Str("host", r.Host).Str("image", image).Str("tag", tagName).Msg("expanding tag")
 	imageSpecifiers := make([]ImageSpecifier, 0, 1)
 
 	// when the tag is specified add the tag to all images but make sure
 	// that the tag exists for the image
 	if tagName != "*" {
-		for _, image := range images {
-			is := ImageSpecifier{r, image, tagName}
-			exists, err := is.Exists()
-			if err != nil {
-				return nil, err
-			}
-			if exists {
-				imageSpecifiers = append(imageSpecifiers, is)
-			}
-
+		is := ImageSpecifier{r, image, tagName}
+		exists, err := is.Exists()
+		if err != nil {
+			return nil, err
 		}
+		if exists {
+			imageSpecifiers = append(imageSpecifiers, is)
+		}
+
 		return imageSpecifiers, nil
 	}
 
-	type result struct {
-		image string
-		tags  []string
-		err   error
+	tags, err := r.GetTags(image)
+	if err != nil {
+		return nil, err
 	}
-	tagFetchResults := sliceops.MapAsync(images, func(image string) result {
-		tags, err := r.GetTags(image)
-		return result{image, tags, err}
-	})
 
-	for _, res := range tagFetchResults {
-		if res.err != nil {
-			return nil, res.err
-		}
-		for _, tag := range res.tags {
-			imageSpecifiers = append(imageSpecifiers, ImageSpecifier{r, res.image, tag})
-		}
+	for _, tag := range tags {
+		imageSpecifiers = append(imageSpecifiers, ImageSpecifier{r, image, tag})
 	}
 
 	return imageSpecifiers, nil
