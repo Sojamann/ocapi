@@ -90,6 +90,7 @@ func NewRegisty(host string) (*Registry, error) {
 
 // makes the request and performs some common error checking
 // and retry logic
+// TODO: see error handling: https://github.com/opencontainers/distribution-spec/blob/main/spec.md
 func (r *Registry) request(request *http.Request) (*http.Response, error) {
 	request.Header.Set("Accept-Encoding", "*")
 

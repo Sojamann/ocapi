@@ -1,5 +1,4 @@
 # Next Steps
-[ ] remove sliceops?
 [ ] we have throttleing through MapAsync and the throttleChan in repository
     we should do this in one spot only
 

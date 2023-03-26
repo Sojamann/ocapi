@@ -10,13 +10,13 @@ import (
 	"github.com/sojamann/ocapi/registry"
 )
 
+const numConcurrentTasks = 5
+
 const registryPattern = `[\w.-_]+`
 const imagePattern = `(\*|([\w-_./]+)(\*|\/)?)`
 const tagPattern = `(\*|[\w-_.]+)`
 
 var imagePatternRe = regexp.MustCompile(fmt.Sprintf("^%s/%s:%s$", registryPattern, imagePattern, tagPattern))
-
-type ImagePattern string
 
 type InvalidImagePattern string
 
@@ -30,6 +30,8 @@ func ValidateImagePattern(s string) error {
 	}
 	return InvalidImagePattern(s)
 }
+
+type ImagePattern string
 
 func (s *ImagePattern) IsValid() bool {
 	return ValidateImagePattern(string(*s)) == nil
@@ -64,7 +66,7 @@ func (s *ImagePattern) ExpandToSpecifiers() ([]ImageSpecifier, error) {
 		is  []ImageSpecifier
 		err error
 	}
-	tagResults := slices.MapAsync(matchingImageNames, 5, func(image string) result {
+	tagResults := slices.MapAsync(matchingImageNames, numConcurrentTasks, func(image string) result {
 		is, err := expandTagSpecifier(r, image, tagSpecifier)
 		return result{is, err}
 	})
@@ -90,7 +92,7 @@ func (s *ImagePattern) ExpandToImages() ([]*Image, error) {
 		img *Image
 		err error
 	}
-	imageGetResult := slices.MapAsync(specifiers, 10, func(sp ImageSpecifier) result {
+	imageGetResult := slices.MapAsync(specifiers, numConcurrentTasks, func(sp ImageSpecifier) result {
 		img, err := sp.ToImage()
 		return result{img, err}
 	})
