@@ -2,30 +2,13 @@ package image
 
 import (
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/life4/genesis/slices"
 	"github.com/rs/zerolog/log"
-	progressbar "github.com/schollz/progressbar/v3"
 	"github.com/sojamann/ocapi/registry"
 )
-
-var barOpts = []progressbar.Option{
-	progressbar.OptionSetWriter(os.Stderr),
-	progressbar.OptionSetWidth(10),
-	progressbar.OptionThrottle(65 * time.Millisecond),
-	progressbar.OptionShowCount(),
-	progressbar.OptionShowIts(),
-	progressbar.OptionOnCompletion(func() {
-		fmt.Fprint(os.Stderr, "\n")
-	}),
-	progressbar.OptionClearOnFinish(),
-	progressbar.OptionFullWidth(),
-	progressbar.OptionSetRenderBlankState(true),
-}
 
 const numConcurrentTasks = 5
 
