@@ -2,13 +2,30 @@ package image
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/life4/genesis/slices"
 	"github.com/rs/zerolog/log"
+	progressbar "github.com/schollz/progressbar/v3"
 	"github.com/sojamann/ocapi/registry"
 )
+
+var barOpts = []progressbar.Option{
+	progressbar.OptionSetWriter(os.Stderr),
+	progressbar.OptionSetWidth(10),
+	progressbar.OptionThrottle(65 * time.Millisecond),
+	progressbar.OptionShowCount(),
+	progressbar.OptionShowIts(),
+	progressbar.OptionOnCompletion(func() {
+		fmt.Fprint(os.Stderr, "\n")
+	}),
+	progressbar.OptionClearOnFinish(),
+	progressbar.OptionFullWidth(),
+	progressbar.OptionSetRenderBlankState(true),
+}
 
 const numConcurrentTasks = 5
 
@@ -62,12 +79,15 @@ func (s *ImagePattern) ExpandToSpecifiers() ([]ImageSpecifier, error) {
 		return nil, err
 	}
 
+	bar := pbar("Getting image tags", len(matchingImageNames))
+	defer bar.Clear()
 	type result struct {
 		is  []ImageSpecifier
 		err error
 	}
 	tagResults := slices.MapAsync(matchingImageNames, numConcurrentTasks, func(image string) result {
 		is, err := expandTagSpecifier(r, image, tagSpecifier)
+		bar.Add(1)
 		return result{is, err}
 	})
 
@@ -88,12 +108,15 @@ func (s *ImagePattern) ExpandToImages() ([]*Image, error) {
 		return nil, err
 	}
 
+	bar := pbar("Getting image tags", len(specifiers))
+	defer bar.Clear()
 	type result struct {
 		img *Image
 		err error
 	}
 	imageGetResult := slices.MapAsync(specifiers, numConcurrentTasks, func(sp ImageSpecifier) result {
 		img, err := sp.ToImage()
+		bar.Add(1)
 		return result{img, err}
 	})
 
